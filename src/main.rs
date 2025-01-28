@@ -1,4 +1,5 @@
 use chrono::Local;
+use colored::*;
 use std::io::Write;
 use std::{fs::File, io, path::Path};
 
@@ -34,11 +35,16 @@ fn print_receipt(products: &[Product], total_spent: f64, payment_method: Option<
         writeln!(file, "Payment Method: {:?}", method).unwrap();
     }
 
-    println!("Receipt saved as {}", filename);
+    println!(
+        "\n{} {}",
+        "Receipt saved as".green().bold(),
+        filename.blue().bold()
+    );
 }
 
 fn get_input(prompt: &str) -> String {
-    println!("{}", prompt);
+    print!("{} ", prompt.cyan().bold());
+    io::stdout().flush().unwrap();
     let mut input = String::new();
     io::stdin()
         .read_line(&mut input)
@@ -51,27 +57,32 @@ fn get_numeric_input<T: std::str::FromStr>(prompt: &str) -> T {
         let input = get_input(prompt);
         match input.parse() {
             Ok(value) => return value,
-            Err(_) => println!("Invalid input. Please enter a valid number."),
+            Err(_) => println!(
+                "{}",
+                "⚠️  Invalid input. Please enter a valid number."
+                    .red()
+                    .bold()
+            ),
         }
     }
 }
 
 fn select_payment_method() -> Option<PaymentMethod> {
     loop {
-        println!("Select payment method:");
-        println!("1. Visa");
-        println!("2. Mastercard");
-        println!("3. PayPal");
-        println!("4. Cancel transaction");
+        println!("\n{}", "💳 Payment Methods:".yellow().bold());
+        println!("{}  1. Visa", "•".bright_green());
+        println!("{}  2. Mastercard", "•".bright_green());
+        println!("{}  3. PayPal", "•".bright_green());
+        println!("{}  4. Cancel transaction", "•".red());
 
-        let choice: u32 = get_numeric_input("Enter your choice:");
+        let choice: u32 = get_numeric_input("\nEnter your choice (1-4):");
 
         match choice {
             1 => return Some(PaymentMethod::Visa),
             2 => return Some(PaymentMethod::Mastercard),
             3 => return Some(PaymentMethod::PayPal),
             4 => return None,
-            _ => println!("Invalid choice. Please select 1-4."),
+            _ => println!("{}", "⚠️  Invalid choice. Please select 1-4.".red().bold()),
         }
     }
 }
@@ -83,35 +94,61 @@ fn process_payment(amount: f64) -> (bool, Option<PaymentMethod>) {
     };
 
     println!(
-        "Processing payment of {:.2} via {:?}...",
-        amount, payment_method
+        "\n{} {} {} {:?}...",
+        "💰".yellow(),
+        "Processing payment of".yellow(),
+        format!("${:.2}", amount).yellow().bold(),
+        payment_method
     );
     // Simulated payment processing
     (true, Some(payment_method))
 }
 
 fn main() {
-    println!("Welcome to the Rust Shopping Assistant!");
+    println!(
+        "\n{}",
+        "🛒 Welcome to the Rust Shopping Assistant!".green().bold()
+    );
+    println!(
+        "{}",
+        "Add your items one by one and we'll help you manage your budget.".bright_black()
+    );
+    println!("{}", "─".repeat(60).bright_black());
 
     let mut products: Vec<Product> = Vec::new();
+    let mut total_items = 0;
 
     // Product entry loop
     loop {
-        let name = get_input("Enter product name (or 'done' to finish):");
+        if total_items > 0 {
+            println!(
+                "\n{} {}",
+                "📝".yellow(),
+                format!("Current items: {}", total_items).yellow()
+            );
+        }
+
+        let name = get_input("\nEnter product name (or 'done' to finish):");
         if name.to_lowercase() == "done" {
             break;
         }
 
-        let price: f64 = get_numeric_input("Enter product price:");
+        let price: f64 = get_numeric_input("Enter product price ($):");
 
         products.push(Product { name, price });
+        total_items += 1;
+        println!("{}", "✅ Item added successfully!".green());
     }
 
-    let budget: f64 = get_numeric_input("Enter your budget:");
+    if products.is_empty() {
+        println!("{}", "\n⚠️  No items added. Goodbye!".yellow());
+        return;
+    }
 
-    println!("\n{:=<40}", "");
-    println!("Shopping List Analysis");
-    println!("{:=<40}\n", "");
+    let budget: f64 = get_numeric_input("\nEnter your budget ($):");
+
+    println!("\n{}", "🔍 Shopping List Analysis".blue().bold());
+    println!("{}", "═".repeat(60).bright_black());
 
     // Sort products by price (cheapest first)
     products.sort_by(|a, b| a.price.partial_cmp(&b.price).unwrap());
@@ -129,40 +166,83 @@ fn main() {
     }
 
     // Display optimal purchase suggestion
-    println!("Recommended purchase plan (cheapest items first):");
-    println!("{:-<40}", "");
-    println!("{:<20} {:>15}", "Product", "Price");
-    println!("{:-<40}", "");
+    println!(
+        "\n{}",
+        "💡 Recommended purchase plan (cheapest first):".yellow()
+    );
+    println!("{}", "─".repeat(60).bright_black());
+    println!("{:<30} {}", "Product".bright_blue(), "Price".bright_blue());
+    println!("{}", "─".repeat(60).bright_black());
+
     for item in &affordable_items {
-        println!("{:<20} {:>15.2}", item.name, item.price);
+        println!(
+            "{:<30} ${:.2}",
+            item.name.white(),
+            item.price.to_string().green()
+        );
     }
-    println!("{:-<40}", "");
-    println!("{:<20} {:>15.2}", "Total", total_affordable);
-    println!("{:<20} {:>15.2}\n", "Remaining Budget", remaining_budget);
+
+    println!("{}", "─".repeat(60).bright_black());
+    println!(
+        "{:<30} ${:.2}",
+        "Total".white().bold(),
+        total_affordable.to_string().green().bold()
+    );
+    println!(
+        "{:<30} ${:.2}\n",
+        "Remaining Budget".white().bold(),
+        remaining_budget.to_string().cyan().bold()
+    );
 
     // Calculate actual total price
     let total_price: f64 = products.iter().map(|p| p.price).sum();
 
     if total_price <= budget {
-        println!("You can afford all items!");
+        println!(
+            "{}",
+            "🎉 Great news! You can afford all items!".green().bold()
+        );
         print_receipt(&products, total_price, None);
     } else {
+        println!("{}", "⚠️  Budget Alert!".red().bold());
         println!(
-            "You cannot afford all items. Shortfall: {:.2}",
-            total_price - budget
+            "{} ${:.2}",
+            "You cannot afford all items. Shortfall:".red(),
+            (total_price - budget).to_string().red().bold()
         );
-        println!("Consider removing some items or using alternative payment.");
+        println!(
+            "{}",
+            "\nWould you like to use an alternative payment method for the remaining amount?"
+                .yellow()
+        );
 
         let need_to_cover = total_price - budget;
-        println!("Amount needing coverage: {:.2}", need_to_cover);
+        println!(
+            "{} ${:.2}",
+            "Amount needing coverage:".yellow(),
+            need_to_cover.to_string().yellow().bold()
+        );
 
         let (payment_success, payment_method) = process_payment(need_to_cover);
         if payment_success {
-            println!("Payment successful! Completing purchase...");
+            println!(
+                "{}",
+                "\n✅ Payment successful! Completing purchase..."
+                    .green()
+                    .bold()
+            );
             print_receipt(&products, total_price, payment_method);
         } else {
-            println!("Payment failed. Adjust your shopping list and try again.");
-            println!("Remaining budget: {:.2}", budget);
+            println!("{}", "\n❌ Payment cancelled.".red().bold());
+            println!(
+                "{} ${:.2}",
+                "Available budget:".yellow(),
+                budget.to_string().yellow().bold()
+            );
+            println!(
+                "{}",
+                "Consider removing some items or try again later.".bright_black()
+            );
         }
     }
 }
