@@ -76,10 +76,10 @@ fn select_payment_method() -> Option<PaymentMethod> {
     }
 }
 
-fn process_payment(amount: f64) -> bool {
+fn process_payment(amount: f64) -> (bool, Option<PaymentMethod>) {
     let payment_method = match select_payment_method() {
         Some(method) => method,
-        None => return false,
+        None => return (false, None),
     };
 
     println!(
@@ -87,7 +87,7 @@ fn process_payment(amount: f64) -> bool {
         amount, payment_method
     );
     // Simulated payment processing
-    true
+    (true, Some(payment_method))
 }
 
 fn main() {
@@ -156,9 +156,10 @@ fn main() {
         let need_to_cover = total_price - budget;
         println!("Amount needing coverage: {:.2}", need_to_cover);
 
-        if process_payment(need_to_cover) {
+        let (payment_success, payment_method) = process_payment(need_to_cover);
+        if payment_success {
             println!("Payment successful! Completing purchase...");
-            print_receipt(&products, total_price, select_payment_method());
+            print_receipt(&products, total_price, payment_method);
         } else {
             println!("Payment failed. Adjust your shopping list and try again.");
             println!("Remaining budget: {:.2}", budget);
